@@ -1,58 +1,41 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const User = require('../models/user')
+const jwt = require('jsonwebtoken')
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
-};
-
-const registerUser = async (req, res) => {
-  const { username, email, password } = req.body;
-
-  try {
-    const userExists = await User.findOne({ email });
-
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+// Signup controller
+exports.signup = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ username: req.body.username })
+        if (user) {
+            res.status(403)
+            return next(new Error('Username is already taken'))
+        }
+        const newUser = new User(req.body)
+        const savedUser = await newUser.save()
+        const token = jwt.sign(savedUser.withoutPassword(), process.env.SECRET)
+        return res.status(201).send({ user: savedUser.withoutPassword(), token })
+    } catch (error) {
+        res.status(500)
+        return next(error)
     }
+}
 
-    const user = await User.create({
-      username,
-      email,
-      password,
-    });
-
-    res.status(201).json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      token: generateToken(user._id),
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-const authUser = async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-
-    if (user && (await user.matchPassword(password))) {
-      res.json({
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        token: generateToken(user._id),
-      });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+// Login controller
+exports.login = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ username: req.body.username })
+        if (!user) {
+            res.status(403)
+            return next(new Error("Incorrect Username or Password"))
+        }
+        const passwordCheck = await user.checkPassword(req.body.password)
+        if (!passwordCheck) {
+            res.status(403)
+            return next(new Error("Incorrect Username or Password"))
+        }
+        const token = jwt.sign(user.withoutPassword(), process.env.SECRET)
+        return res.status(201).send({ user: user.withoutPassword(), token })
+    } catch (error) {
+        res.status(500)
+        return next(error)
     }
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-module.exports = { registerUser, authUser };
+}
