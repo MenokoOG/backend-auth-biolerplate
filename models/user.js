@@ -1,7 +1,6 @@
-const mongoose = require("mongoose")
-const Schema = mongoose.Schema
-const bcrypt = require("bcrypt")
-
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
+const bcrypt = require("bcrypt");
 
 const userSchema = new Schema({
     username: {
@@ -9,8 +8,13 @@ const userSchema = new Schema({
         unique: true,
         required: true
     }, 
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     password: {
-        type : String,
+        type: String,
         required: true
     },
     isAdmin: {
@@ -21,11 +25,10 @@ const userSchema = new Schema({
         type: Date,
         default: Date.now
     }
-})
-
+});
 
 // pre-save hook to encrypt user passwords on signup
-userSchema.pre("save", async function(next){
+userSchema.pre("save", async function(next) {
     const user = this;
 
     // Hash the password if it has been modified or is new
@@ -33,14 +36,17 @@ userSchema.pre("save", async function(next){
         try {
             const hash = await bcrypt.hash(user.password, 10);
             user.password = hash;
+            next();
         } catch (err) {
             return next(err);
         }
+    } else {
+        next();
     }
-  })
-  
-  // method to check encrypted password on login
-  userSchema.methods.checkPassword = async function (passwordAttempt) {
+});
+
+// method to check encrypted password on login
+userSchema.methods.checkPassword = async function(passwordAttempt) {
     try {
         return await bcrypt.compare(passwordAttempt, this.password);
     } catch (err) {
@@ -48,10 +54,10 @@ userSchema.pre("save", async function(next){
     }
 };
 
-userSchema.methods.withoutPassword = function () {
+userSchema.methods.withoutPassword = function() {
     const user = this.toObject();
     delete user.password;
     return user;
 };
 
-module.exports = mongoose.model("User", userSchema)
+module.exports = mongoose.model("User", userSchema);
