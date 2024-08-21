@@ -11,7 +11,7 @@ app.use(morgan('dev'))
 // Connect to the database
 connectToDb()
 
-app.use('/api/auth', require('./routes/authRoutes'))
+app.use('/api/auth', require('./routes/authRouter'))
 app.use('/api/main', expressjwt({ secret: process.env.SECRET, algorithms: ['HS256'] }))
 
 app.use((err, req, res, next) => {
